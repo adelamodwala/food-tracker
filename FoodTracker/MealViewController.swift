@@ -9,11 +9,21 @@
 import UIKit
 import os.log
 
-class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIGestureRecognizerDelegate {
     
     //MARK: Navigation
     @IBAction func cancel(_ sender: UIBarButtonItem) {
-        dismiss(animated: true, completion: nil)
+        // This meal view controller needs to be dismissed in two different ways
+        let isPresentingInAddMealMode = presentingViewController is UINavigationController
+        if(isPresentingInAddMealMode) {
+            dismiss(animated: true, completion: nil)
+        }
+        else if let owningNavigationController = navigationController {
+            owningNavigationController.popViewController(animated: true)
+        }
+        else {
+            fatalError("The MealViewController is not inside a navigation controller.")
+        }
     }
     
      // This method lets you configure a view controller before you present it
@@ -50,8 +60,28 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // Set interactive pop gesture recognizer to self
+        navigationController?.interactivePopGestureRecognizer?.delegate = self
+        
         // Handle the text field’s user input through delegate callbacks.
         nameTextField.delegate = self
+        
+        // Set up views if editing an existing Meal.
+        if let meal = meal {
+            navigationItem.title = meal.name
+            nameTextField.text = meal.name
+            photoImageView.image = meal.photo
+            ratingControl.rating = meal.rating
+            
+            // Enable swipe back
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+            os_log("Enabling swipe back", log: OSLog.default, type: .debug)
+        }
+        else {
+            // Disable swipe back
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = false
+            os_log("Disabling swipe back", log: OSLog.default, type: .debug)
+        }
         
         // Enable the Save button only if the text field has a valid Meal name.
         updateSaveButtonState()
@@ -94,7 +124,7 @@ class MealViewController: UIViewController, UITextFieldDelegate, UIImagePickerCo
         // Dismiss the picker
         dismiss(animated: true, completion: nil)
     }
-
+    
     //MARK: Actions
     @IBAction func selectImageFromPhotoLibrary(_ sender: UITapGestureRecognizer) {
         
